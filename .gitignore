@@ -1,3 +1,5 @@
+.gitignore
+.DA_Store
 main.asv
 CreaStrutturaPannelli.asv
 createProfile.asv

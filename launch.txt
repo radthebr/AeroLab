@@ -1,4 +1,0 @@
-open -a XQuartz
-export DISPLAY=:0.0
-cd /Applications/Xfoil-for-Mac-main/runs
-../bin/xfoil < XFoilInput.txt

@@ -1,10 +1,7 @@
 %% Test Hess Smith
-
 clc
 close all
-clear 
-
-% addpath mat_functions
+clear
 
 %% Input
 
@@ -20,8 +17,8 @@ U_inf_normal=U_inf_normal./norm(U_inf_normal);
 TestCase=0;
 NCorpi=1;  % Numero di corpi da analizzare
 
-CodiceProfilo=cell(NCorpi, 1);
-CodiceProfilo{1}='0012';
+CodiceProfilo=cell(NCorpi,1);
+CodiceProfilo{1}='6412';
 Chord=[1];
 NPannelli=[102];
 
@@ -29,31 +26,32 @@ LE_X_Position=[0];
 LE_Y_Position=[0];
 
 %% Creazione profilo
-% numero profilo:
+% Numero profilo:
 i=1;
 
-[x,y]=createProfile(CodiceProfilo{i},NPannelli(i),Chord(i));
+[x,y]=CreateProfile(CodiceProfilo{i},NPannelli(i),Chord(i));
 
 Corpi{i}.x=x;
 Corpi{i}.y=y;
 
 %% Creazione di una struttura di pannelli
-
-Centro = cell(NCorpi, 1);
-Normale = cell(NCorpi, 1);
-Tangente = cell(NCorpi, 1);
-Estremo_1 = cell(NCorpi, 1);
-Estremo_2 = cell(NCorpi, 1);
-alpha = cell(NCorpi, 1);
-lunghezza = cell(NCorpi, 1);
-L2G_TransfMatrix = cell(NCorpi, 1);
-G2L_TransfMatrix = cell(NCorpi, 1);
+Centro=cell(NCorpi,1);
+Normale=cell(NCorpi,1);
+Tangente=cell(NCorpi,1);
+Estremo_1=cell(NCorpi,1);
+Estremo_2=cell(NCorpi,1);
+alpha=cell(NCorpi,1);
+lunghezza=cell(NCorpi,1);
+L2G_TransfMatrix=cell(NCorpi,1);
+G2L_TransfMatrix=cell(NCorpi,1);
 for i=1:NCorpi
-    [Centro{i}, Normale{i}, Tangente{i}, Estremo_1{i}, Estremo_2{i}, alpha{i}, lunghezza{i}, L2G_TransfMatrix{i}, G2L_TransfMatrix{i}] = CreaStrutturaPannelli(Corpi{i});
+    [Centro{i},Normale{i},Tangente{i},Estremo_1{i},Estremo_2{i},alpha{i},lunghezza{i},L2G_TransfMatrix{i},G2L_TransfMatrix{i}]=CreaStrutturaPannelli(Corpi{i});
 end
         
-figure;    %Corpo_i
-plot(Centro{1,1}(:, 1), Centro{1,1}(:, 2), 'o-')
+figure (1)    %Corpo_i
+plot(Centro{i,i}(:,1),Centro{1,1}(:,2),'-o','LineWidth',1)
+title(['PANNELLIZZAZIONE NACA',CodiceProfilo{1}]);
+grid on
 axis equal
 
 %% Inizializzazione matrici e vettori
@@ -62,7 +60,7 @@ axis equal
 NCols=sum(NPannelli)+NCorpi;
 NRows=NCols;
 matrixA=zeros(NRows,NCols);
-TermineNoto=zeros(NRows, 1);
+TermineNoto=zeros(NRows,1);
 
 %%
 us=ViSorgente(Centro, Estremo_1, Estremo_2, L2G_TransfMatrix, G2L_TransfMatrix);
@@ -93,12 +91,11 @@ U_Pannelli=cell(NCorpi, 1);
 Ut_Pannelli=cell(NCorpi, 1);
 Un_Pannelli=cell(NCorpi, 1);
 Cp=cell(NCorpi, 1);
+
 for Corpo_i=1:NCorpi
-    
     U_Pannelli{Corpo_i}=zeros(NPannelli(Corpo_i),2);
     Ut_Pannelli{Corpo_i}=zeros(NPannelli(Corpo_i),1);
     Un_Pannelli{Corpo_i}=zeros(NPannelli(Corpo_i),1);
-    
 end
 
 for Corpo_i=1:NCorpi
