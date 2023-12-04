@@ -21,23 +21,37 @@ for i=1:NPannelli
     Centro(i,1)=(Corpo_Input.x(i)+Corpo_Input.x(i+1))/2;
     Centro(i,2)=(Corpo_Input.y(i)+Corpo_Input.y(i+1))/2;
     
-    dx=Corpo_Input.x(i+1)-Corpo_Input.x(i);
-    dy=Corpo_Input.y(i+1)-Corpo_Input.y(i);
+    dy = Estremo_2(i, 2) - Estremo_1(i, 2);
+    dx = Estremo_2(i, 1) - Estremo_1(i, 1);
+%     dx=Corpo_Input.x(i+1)-Corpo_Input.x(i);
+%     dy=Corpo_Input.y(i+1)-Corpo_Input.y(i);
     
-    % compute angle and matrices
+    % Compute angle and matrices
     angle=atan2(dy,dx);
     
-    L2G_TransfMatrix(i,:,:)=[cos(angle), -sin(angle);
-                                 sin(angle), cos(angle)];
-                             
-    G2L_TransfMatrix(i,:,:)=[cos(angle), sin(angle);
-                                 -sin(angle), cos(angle)];
-                             
-    Normale(i,1)=-dy;
-    Normale(i,2)=dx;
+    if (abs(angle)<10^(-12)); angle=0; end
+    alpha(i) = angle;
+    sinAngle = sin(angle);
+    cosAngle = cos(angle);
     
-    Tangente(i,1)=dx;
-    Tangente(i,2)=dy;
+    if(abs(sinAngle) < 10^(-12))
+        sinAngle = 0;
+    end
+    if(abs(cosAngle) < 10^(-12))
+        cosAngle = 0;
+    end
     
-    lunghezza(i)=norm(Estremo_2(i,:)-Estremo_1(i,:));
+    L2G_TransfMatrix(i, :, :) = [cosAngle ,  -sinAngle;
+                                 sinAngle,  cosAngle];
+                             
+    G2L_TransfMatrix(i, :, :) = [cosAngle ,  sinAngle;
+                                 -sinAngle,  cosAngle];
+                             
+    Normale(i, 1) = -sinAngle;
+    Normale(i, 2) = cosAngle;
+    
+    Tangente(i, 1) = cosAngle;
+    Tangente(i, 2) = sinAngle;
+    
+    lunghezza(i) = norm(Estremo_2(i, :) - Estremo_1(i, :));
 end

@@ -28,6 +28,7 @@ LE_Y_Position=[0];
 %% Creazione profilo
 % Numero profilo:
 i=1;
+Corpi=cell(NCorpi, 1);
 
 [x,y]=CreateProfile(CodiceProfilo{i},NPannelli(i),Chord(i));
 
@@ -44,53 +45,145 @@ alpha=cell(NCorpi,1);
 lunghezza=cell(NCorpi,1);
 L2G_TransfMatrix=cell(NCorpi,1);
 G2L_TransfMatrix=cell(NCorpi,1);
+
 for i=1:NCorpi
     [Centro{i},Normale{i},Tangente{i},Estremo_1{i},Estremo_2{i},alpha{i},lunghezza{i},L2G_TransfMatrix{i},G2L_TransfMatrix{i}]=CreaStrutturaPannelli(Corpi{i});
 end
-        
-figure (1)    %Corpo_i
-plot(Centro{i,i}(:,1),Centro{1,1}(:,2),'-o','LineWidth',1)
-title(['PANNELLIZZAZIONE NACA',CodiceProfilo{1}]);
-grid on
-axis equal
+
+title_string = cell(NCorpi, 1);
+for Corpo_i = 1:NCorpi    
+    figure;
+    plot(Centro{Corpo_i}(:, 1), Centro{Corpo_i}(:, 2),'-o','LineWidth',1)
+    hold on   
+    title_string{Corpo_i} = strcat("Pannellizzazione corpo ", num2str(Corpo_i));
+    title(['PANNELLIZZAZIONE NACA',CodiceProfilo{1}]);
+    grid on
+    axis equal
+    hold off
+end
 
 %% Inizializzazione matrici e vettori
 % Ora che ho i pannelli, posso inizializzare la matrice ed i vettori
 
 NCols=sum(NPannelli)+NCorpi;
 NRows=NCols;
-matrixA=zeros(NRows,NCols);
+matriceA=zeros(NRows,NCols);
 TermineNoto=zeros(NRows,1);
 
-%%
-us=ViSorgente(Centro, Estremo_1, Estremo_2, L2G_TransfMatrix, G2L_TransfMatrix);
-uv=ViVortice(Centro, Estremo_1, Estremo_2, L2G_TransfMatrix, G2L_TransfMatrix);
+%% Creazione della matrice quadrata As
+indexStart_riga=0;
+for i = 1:NPannelli(Corpo_i)
+    index_i = indexStart_riga + i; % Riga
 
-matrixAs=dot(us,Normale);
-vectorcs=dot(us,Tangente(1))+dot(us,Tangente(end));
-%vectorav=sum;
-cv=sum(vectorcs);
+    Centro_qui = Centro{Corpo_i}(i, :)';
+    Normale_qui = Normale{Corpo_i}(i, :)';
 
-bv=-U_inf_normal*(Tangente(1)+Tangente(end));
-bs=dot(-U_inf,normale);
+    indexStart_colonna = 0;
 
-matrixA=[];
-TermineNoto=[];
+    for Corpo_j = 1:NCorpi
+        for j = 1:NPannelli(Corpo_j)
+            index_j = indexStart_colonna + j;  % Colonna
 
-%%
+            Estremo_1_qui = Estremo_1{Corpo_j}(j, :)';
+            Estremo_2_qui = Estremo_2{Corpo_j}(j, :)';
 
+            L2G_TransfMatrix_qui = squeeze(L2G_TransfMatrix{Corpo_j}(j, :, :));
+            G2L_TransfMatrix_qui = squeeze(G2L_TransfMatrix{Corpo_j}(j, :, :));
 
+            matriceA(index_i, index_j) = dot(ViSorgente(Centro_qui, Estremo_1_qui, Estremo_2_qui, L2G_TransfMatrix_qui, G2L_TransfMatrix_qui), Normale_qui);
 
+            matriceA(index_i, sum(NPannelli)+Corpo_j) = matriceA(index_i, sum(NPannelli)+Corpo_j) + dot(ViVortice(Centro_qui, Estremo_1_qui, Estremo_2_qui, L2G_TransfMatrix_qui, G2L_TransfMatrix_qui), Normale_qui);
+        end
+        indexStart_colonna = indexStart_colonna + NPannelli(Corpo_j);
+    end
+end
+
+%% Creazione delle componenti dei vettori a_v, c_s e c_v
+for Corpo_i=1:NCorpi
+    
+    Centro_Start=Centro{Corpo_i}(1,:)';
+    Tangente_Start=Tangente{Corpo_i}(1,:)'; 
+    
+    Centro_End=Centro{Corpo_i}(end,:)';
+    Tangente_End=Tangente{Corpo_i}(end,:)'; 
+    
+    indexStart_colonna=0;
+        
+    for Corpo_j=1:NCorpi
+        b=0;
+        for j=1:NPannelli(Corpo_j)
+    
+            index_j=indexStart_colonna+j;
+
+            Estremo_1_qui=Estremo_1{Corpo_j}(j,:)';                
+            Estremo_2_qui=Estremo_2{Corpo_j}(j,:)';
+            L2G_TransfMatrix_qui=squeeze(L2G_TransfMatrix{Corpo_j}(j,:,:));
+            G2L_TransfMatrix_qui=squeeze(G2L_TransfMatrix{Corpo_j}(j,:,:));
+
+            a=dot(ViSorgente(Centro_Start,Estremo_1_qui,Estremo_2_qui,L2G_TransfMatrix_qui,G2L_TransfMatrix_qui),Tangente_Start);
+            b=b+dot(ViVortice(Centro_Start,Estremo_1_qui,Estremo_2_qui,L2G_TransfMatrix_qui,G2L_TransfMatrix_qui),Tangente_Start);
+
+            a=a+dot(ViSorgente(Centro_End,Estremo_1_qui,Estremo_2_qui,L2G_TransfMatrix_qui,G2L_TransfMatrix_qui),Tangente_End);
+            b=b+dot(ViVortice(Centro_End,Estremo_1_qui,Estremo_2_qui,L2G_TransfMatrix_qui,G2L_TransfMatrix_qui),Tangente_End);
+
+            
+            matriceA(sum(NPannelli)+Corpo_i,index_j)=a;
+
+        end
+        
+        matriceA(sum(NPannelli)+Corpo_i,sum(NPannelli)+Corpo_j)=b;
+        
+        indexStart_colonna=indexStart_colonna+NPannelli(Corpo_j);
+        
+    end
+end
+
+%% Creazione del termine noto
+indexStart=0;
+
+for Corpo_i=1:NCorpi
+    for j=1:NPannelli(Corpo_i)
+
+        Normale_qui=Normale{Corpo_i}(j,:)'; 
+        
+        index=indexStart+j;
+        
+        TermineNoto(index)=-dot(U_inf,Normale_qui);
+    end
+    
+    Tangente_1=Tangente{Corpo_i}(1,:)';  
+    Tangente_end=Tangente{Corpo_i}(end,:)';
+    TermineNoto(sum(NPannelli)+Corpo_i)=-dot(U_inf,(Tangente_1+Tangente_end));
+    
+    indexStart=indexStart+NPannelli(Corpo_i);
+end
 
 %% Risoluzione sistema lineare
-Soluzione=linsolve(matrixA,TermineNoto);
+Soluzione = linsolve(matriceA,TermineNoto);
 
+sigma_mia = cell(NCorpi,1);
+gamma_mia = zeros(NCorpi,1);
+
+sigma_start = 0;
+sigma_end = 0;
+
+% Definizione vettore sorgenti e vorticità
+for Corpo_i=1:NCorpi
+    % Sigma
+    sigma_start = sigma_end + 1;
+    sigma_end = sigma_start + NPannelli(Corpo_i) - 1;
+    sigma_mia{Corpo_i} = Soluzione(sigma_start:sigma_end,1);
+    
+    % Gamma
+    gamma_selector = (sum(NPannelli) + Corpo_i);
+    gamma_mia(Corpo_i) = Soluzione(gamma_selector,1);
+end
 
 %% Calcolo del cp e della velocità sui pannelli
-U_Pannelli=cell(NCorpi, 1);
-Ut_Pannelli=cell(NCorpi, 1);
-Un_Pannelli=cell(NCorpi, 1);
-Cp=cell(NCorpi, 1);
+U_Pannelli=cell(NCorpi,1);
+Ut_Pannelli=cell(NCorpi,1);
+Un_Pannelli=cell(NCorpi,1);
+Cp=cell(NCorpi,1);
 
 for Corpo_i=1:NCorpi
     U_Pannelli{Corpo_i}=zeros(NPannelli(Corpo_i),2);
@@ -140,9 +233,7 @@ for Corpo_i = 1:NCorpi
     Cl{Corpo_i} = Cl_qui / Chord(Corpo_i);
 end
 
-%%
-
-
+%% Plot Cp e profili
 figure
 legend_string = cell(NCorpi, 1);
 for Corpo_i = 1:NCorpi
@@ -160,9 +251,7 @@ title('$C_P$', 'interpreter', 'latex')
 % plot(Profilo_2(:, 1)-min(Profilo_2(:, 1)), -Profilo_2(:, 2), '*')
 % legend_string{3} = strcat("Ale, Corpo ", num2str(1));
 % legend_string{4} = strcat("Ale, Corpo ", num2str(2));
-legend(legend_string)
-
-
+legend(legend_string, 'interpreter', 'latex')
 
 figure
 legend_string = cell(NCorpi, 1);
@@ -176,9 +265,7 @@ axis equal
 legend(legend_string, 'interpreter', 'latex')
 
 
-%%
-
-
+%% Render della configurazione studiata
 ifSaveFigures=false;
 
 if ifSaveFigures
@@ -218,10 +305,10 @@ if ifSaveFigures
     isIn = zeros(Nx, Ny);
     
     t = cputime;
-    parfor(i = 1:Nx)
+    parfor i = 1:Nx
 %         i
-        for(j = 1:Ny)
-            for( Corpo_i = 1:NCorpi)
+        for j = 1:Ny
+            for Corpo_i = 1:NCorpi
                 Boundary = [ Corpi{Corpo_i}.x Corpi{Corpo_i}.y];
                 if (inpolygon(X(i, j), Y(i, j), Boundary(:, 1), Boundary(:, 2)))
                     isIn(i, j) = 1;
@@ -280,7 +367,6 @@ if ifSaveFigures
 
 
     SavingNameStart = "./Figures/test_";
-
 
     UMag_fig = figure;
     contourf(X, Y, U_Mesh_Mag, 100,'LineStyle','None');
@@ -361,5 +447,3 @@ if ifSaveFigures
     saveas(Streamlines_fig, SavingName);
     
 end
-    
-    
